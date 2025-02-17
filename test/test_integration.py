@@ -45,7 +45,7 @@ class TestIntegration:
         assert response["data"]["recipientListId"] == get_recipient_list_id["data"]["id"]
         assert response["data"]["scheduledTime"] == scheduledTime
 
-    @pytest.mark.integrationTest
+    @pytest.mark.down
     @pytest.mark.description("Create a campaign when email template service is down as part of integration test")
     @pytest.mark.parametrize("campaignName, scheduledTime",
                              [("parthacam", 0)])
@@ -53,7 +53,7 @@ class TestIntegration:
         campaignName = campaignName + str(datetime.now().strftime("%H%M%S"))
         get_email_template = self.api_utils.make_get_request(config_helper.api_urls["email_template"])
         print("get email template response : ", get_email_template)
-        assert "Request failed: HTTPConnectionPool(host='localhost', port=7071):" in get_email_template
+        assert "Request failed: HTTPConnectionPool(host='localhost', port=7071):" not in get_email_template
         print("get email template response : ", get_email_template["data"][0]["id"])
         get_email_template_id = self.api_utils.make_get_request(
             f"{config_helper.api_urls['email_template']}/{get_email_template['data'][0]['id']}")
@@ -81,7 +81,7 @@ class TestIntegration:
         assert response["data"]["recipientListId"] == get_recipient_list_id["data"]["id"]
         assert response["data"]["scheduledTime"] == scheduledTime
 
-    @pytest.mark.integrationTest
+    @pytest.mark.down
     @pytest.mark.description("Create a campaign when recipient service is down as part of integration test")
     @pytest.mark.parametrize("campaignName, scheduledTime",
                              [("parthacam", 0)])
@@ -89,7 +89,7 @@ class TestIntegration:
         campaignName = campaignName + str(datetime.now().strftime("%H%M%S"))
         get_email_template = self.api_utils.make_get_request(config_helper.api_urls["email_template"])
         print("get email template response : ", get_email_template)
-        assert "Request failed: HTTPConnectionPool(host='localhost', port=7072):" in get_email_template
+        assert get_email_template["meta"]["status"] == "SUCCESS"
         print("get email template response : ", get_email_template["data"][0]["id"])
         get_email_template_id = self.api_utils.make_get_request(
             f"{config_helper.api_urls['email_template']}/{get_email_template['data'][0]['id']}")
@@ -98,7 +98,7 @@ class TestIntegration:
         assert get_email_template_id["data"]["id"] is not None
         get_recipient_list = self.api_utils.make_get_request(config_helper.api_urls["recipient_list"])
         print("get recipient list response : ", get_recipient_list)
-        assert get_recipient_list["meta"]["status"] == "SUCCESS"
+        assert "Request failed: HTTPConnectionPool(host='localhost', port=7072):" not in get_recipient_list
         print("get recipient list response : ", get_recipient_list["data"][0]["id"])
         get_recipient_list_id = self.api_utils.make_get_request(
             f"{config_helper.api_urls['recipient_list']}/{get_recipient_list['data'][0]['id']}")

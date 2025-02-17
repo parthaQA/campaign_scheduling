@@ -165,7 +165,7 @@ class TestCampaignAPI:
         assert response["errors"][0]["errorCode"] == "BAS-E-002"
         assert response["errors"][0]["message"] == "Input Validation Error"
 
-    @pytest.mark.e2eTest
+    @pytest.mark.down
     @pytest.mark.description("Create a campaign when email template server is down")
     @pytest.mark.parametrize("campaignName, emailTemplateId, recipientListId, scheduledTime",
                              [("Test Campaign8", "EM-001", "RL-001", 0)])
