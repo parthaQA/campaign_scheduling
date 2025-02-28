@@ -8,7 +8,7 @@ As a user, I want to edit the name of my scheduled campaigns.
 As a user, I want to cancel a scheduled campaign, so that it is not sent if it is no longer needed.
 
 
-The framework is built to test the campaign scheduling features with above user stories. Below tools and libraries are used to build the framework. 
+The framework is built to test the campaign scheduling features with above user stories. Below tools and libraries are used to build the framework. The python version is 3.12.
 
 pytest==8.3.4
 pytest-html==4.1.1
