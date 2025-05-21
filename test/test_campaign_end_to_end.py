@@ -26,7 +26,6 @@ class TestCampaignAPI:
         payload = CampaignRequest.get_payload_for_campaign_creation(campaignName, emailTemplateId, recipientListId,
                                                                     scheduledTime)
         response = self.api_utils.make_post_request(payload, config_helper.api_urls["create_campaign"])
-        print("create campaign response : ", response)
         assert response["meta"]["status"] == "SUCCESS"
         assert response["data"]["campaignName"] == campaignName
         assert response["data"]["id"] is not None
@@ -35,7 +34,6 @@ class TestCampaignAPI:
         assert response["data"]["scheduledTime"] == scheduledTime
         time.sleep(3)
         retrieved_campaign_name = self.mongo_db.get_campaign_name(self.db_admin, campaign_name=campaignName)
-        print("Retrieved Campaign Name:", retrieved_campaign_name)
         assert campaignName in retrieved_campaign_name
 
     @pytest.mark.e2eTest
@@ -49,7 +47,6 @@ class TestCampaignAPI:
         payload = CampaignRequest.get_payload_for_campaign_creation(campaignName, emailTemplateId, recipientListId,
                                                                     scheduledTime)
         response = self.api_utils.make_post_request(payload, config_helper.api_urls["create_campaign"])
-        print("create campaign response : ", response)
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "CAM-E-002"
         assert response["errors"][0]["message"] == "Email Template Not Found"
@@ -64,7 +61,6 @@ class TestCampaignAPI:
         payload = CampaignRequest.get_payload_for_campaign_creation(campaignName, emailTemplateId, recipientListId,
                                                                     scheduledTime)
         response = self.api_utils.make_post_request(payload, config_helper.api_urls["create_campaign"])
-        print("create campaign response : ", response)
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "CAM-E-003"
         assert response["errors"][0]["message"] == "Recipient List Not Found"
@@ -80,7 +76,6 @@ class TestCampaignAPI:
         payload = CampaignRequest.get_payload_for_campaign_creation(campaignName, emailTemplateId, recipientListId,
                                                                     scheduledTime)
         response = self.api_utils.make_post_request(payload, config_helper.api_urls["create_campaign"])
-        print("create campaign response : ", response)
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "BAS-E-002"
         assert response["errors"][0]["message"] == "Input Validation Error"
@@ -103,11 +98,9 @@ class TestCampaignAPI:
         assert response["data"]["scheduledTime"] == scheduledTime
         time.sleep(3)
         retrieved_campaign_name = self.mongo_db.get_campaign_name(self.db_admin, campaign_name=campaignName)
-        print("Retrieved Campaign Name:", retrieved_campaign_name)
         assert campaignName in retrieved_campaign_name
         get_campaign_id = response["data"]["id"]
         response = self.api_utils.make_get_request(f"{config_helper.api_urls['get_campaign']}/{get_campaign_id}")
-        print("get campaign response : ", response)
         assert response["meta"]["status"] == "SUCCESS"
         assert response["data"]["campaignName"] == campaignName
         assert response["data"]["emailTemplateId"] == emailTemplateId
@@ -120,47 +113,65 @@ class TestCampaignAPI:
     def test_get_campaign_non_existent(self, campaignId):
         """Test retrieving a non-existent campaign."""
         response = self.api_utils.make_get_request(f"{config_helper.api_urls['get_campaign']}/{campaignId}")
-        print("get campaign response : ", response)
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "CAM-E-001"
         assert response["errors"][0]["message"] == "Campaign not found"
 
     @pytest.mark.e2eTest
     @pytest.mark.description("update a campaign name with valid data")
-    @pytest.mark.parametrize("campaignName, campaign_id", [("partha_new", "67b2ee38b6a69e6b241c02f9")])
-    def test_update_campaign_name(self, campaignName, campaign_id):
+    # No parametrize for campaign_id, campaignName will be dynamic
+    def test_update_campaign_name(self): # Removed campaignName, campaign_id from signature
         """Test updating the campaign name and validate in DB."""
-        campaignName = campaignName + str(datetime.now().strftime("%H%M%S"))
-        payload = UpdateCampaignRequest.get_payload_for_campaign_update(campaignName, campaign_id)
-        response = self.api_utils.make_patch_request(payload,
-                                                     f"{config_helper.api_urls['update_campaign']}/{campaign_id}/name")
-        print("update campaign response : ", response)
-        assert response["meta"]["status"] == "SUCCESS"
-        assert response["data"]["campaignName"] == campaignName
+        # 1. Create a campaign
+        original_campaign_name = "OriginalCampaign_" + str(datetime.now().strftime("%H%M%S%f"))
+        email_template_id = "EM-001"
+        recipient_list_id = "RL-001"
+        scheduled_time = 0
+
+        create_payload = CampaignRequest.get_payload_for_campaign_creation(
+            original_campaign_name, email_template_id, recipient_list_id, scheduled_time
+        )
+        create_response = self.api_utils.make_post_request(create_payload, config_helper.api_urls["create_campaign"])
+        assert create_response is not None, f"Campaign creation API call failed or returned None. Payload: {create_payload}"
+        assert create_response["meta"]["status"] == "SUCCESS", f"Campaign creation failed: Response: {create_response}"
+        created_campaign_id = create_response["data"]["id"]
+        assert created_campaign_id is not None
+
+        # 2. Update the campaign name
+        updated_campaign_name = "UpdatedCampaign_" + str(datetime.now().strftime("%H%M%S%f"))
+        update_payload = UpdateCampaignRequest.get_payload_for_campaign_update(updated_campaign_name) 
+        
+        update_response = self.api_utils.make_patch_request(
+            update_payload,
+            f"{config_helper.api_urls['update_campaign']}/{created_campaign_id}/name"
+        )
+        assert update_response is not None, f"Campaign update API call failed or returned None. Payload: {update_payload}, URL: {config_helper.api_urls['update_campaign']}/{created_campaign_id}/name"
+        assert update_response["meta"]["status"] == "SUCCESS", f"Campaign update failed: Response: {update_response}"
+        assert update_response["data"]["campaignName"] == updated_campaign_name
+        assert update_response["data"]["id"] == created_campaign_id
 
     @pytest.mark.e2eTest
     @pytest.mark.description("update a campaign name with invalid campaign name")
-    @pytest.mark.parametrize("campaignName, campaign_id", [("cam", "1")])
-    def test_update_non_existent_campaign(self, campaignName, campaign_id):
+    @pytest.mark.parametrize("campaignName, campaign_id", [("cam", "1")]) # campaign_id is for the URL
+    def test_update_non_existent_campaign(self, campaignName, campaign_id): # campaign_id is for the URL
         """Test updating a campaign name for a non-existent campaign."""
-        campaignName = campaignName + str(datetime.now().strftime("%H%M%S"))
-        payload = UpdateCampaignRequest.get_payload_for_campaign_update(campaignName, campaign_id)
+        # campaignName is parameterized for this test case, no need to append timestamp
+        payload = UpdateCampaignRequest.get_payload_for_campaign_update(campaignName) # campaign_id removed
         response = self.api_utils.make_patch_request(payload,
-                                                     f"{config_helper.api_urls['update_campaign']}/{campaign_id}/name")
-        print("update campaign response : ", response)
+                                                     f"{config_helper.api_urls['update_campaign']}/{campaign_id}/name") # campaign_id used in URL
+        assert response is not None, "API call for non-existent campaign update failed or returned None"
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "CAM-E-001"
         assert response["errors"][0]["message"] == "Campaign not found"
 
     @pytest.mark.e2eTest
     @pytest.mark.description("update a campaign name with empty name")
-    @pytest.mark.parametrize("campaignName, campaign_id", [(" ", "1")])
-    def test_update_campaign_empty_name(self, campaignName, campaign_id):
+    @pytest.mark.parametrize("campaignName, campaign_id", [(" ", "1")]) # campaign_id is for the URL
+    def test_update_campaign_empty_name(self, campaignName, campaign_id): # campaign_id is for the URL
         """Test updating a campaign name with empty name."""
-        payload = UpdateCampaignRequest.get_payload_for_campaign_update(campaignName, campaign_id)
+        payload = UpdateCampaignRequest.get_payload_for_campaign_update(campaignName) # campaign_id removed
         response = self.api_utils.make_patch_request(payload,
-                                                     f"{config_helper.api_urls['update_campaign']}/{campaign_id}/name")
-        print("update campaign response : ", response)
+                                                     f"{config_helper.api_urls['update_campaign']}/{campaign_id}/name") # campaign_id used in URL
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "BAS-E-002"
         assert response["errors"][0]["message"] == "Input Validation Error"
@@ -174,7 +185,6 @@ class TestCampaignAPI:
         payload = CampaignRequest.get_payload_for_campaign_creation(campaignName, emailTemplateId, recipientListId,
                                                                     scheduledTime)
         response = self.api_utils.make_post_request(payload, config_helper.api_urls["create_campaign"])
-        print("create campaign response : ", response)
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "BAS-E-001"
         assert response["errors"][0]["message"] == "Internal Server Error"
@@ -189,7 +199,6 @@ class TestCampaignAPI:
         payload = CampaignRequest.get_payload_for_campaign_creation(campaignName, emailTemplateId, recipientListId,
                                                                     scheduledTime)
         response = self.api_utils.make_post_request(payload, config_helper.api_urls["create_campaign"])
-        print("create campaign response : ", response)
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "CAM-E-004"
         assert response["errors"][0]["message"] == "Campaign Name must be unique"
@@ -206,7 +215,6 @@ class TestCampaignAPI:
             "scheduledTime": 0
         })
         response = self.api_utils.make_post_request(payload, config_helper.api_urls["create_campaign"])
-        print("create campaign response : ", response)
         assert response["meta"]["status"] == "FAILURE"
         assert response["errors"][0]["errorCode"] == "BAS-E-002"
         assert response["errors"][0]["message"] == "Input Validation Error"
